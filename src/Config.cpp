@@ -94,12 +94,6 @@ void Config::initDesc()
         ("listen-backlog", boost::program_options::value<std::size_t>()->default_value(1024),
             "listen backlog, default 1024.")
 
-        ("downstream-receive-timeout", boost::program_options::value<std::time_t>()->default_value(30),
-            "timeout for receive from downstream (second), 0 means never timeout, default 30.")
-
-        ("downstream-send-timeout", boost::program_options::value<std::time_t>()->default_value(30),
-            "timeout for send to downstream (second), 0 means never timeout, default 30.")
-
         ("upstream-receive-timeout", boost::program_options::value<std::time_t>()->default_value(30),
             "timeout for receive from uptream (second), 0 means never timeout, default 30.")
 
@@ -129,6 +123,11 @@ void Config::initDesc()
 
         ("username-password-total-max-len", boost::program_options::value<std::size_t>()->default_value(254),
             "max length of username and password, default 254.")
+
+        ("iface-name", boost::program_options::value<std::string>()->default_value(std::string("tun0")),
+            "iface name, default tun0.")
+        ("iface-mtu", boost::program_options::value<uint16_t>()->default_value(1400),
+            "iface MTU, default 1400.")
     ;
 }
 
@@ -158,10 +157,8 @@ void Config::load(boost::filesystem::path file)
     maxConnections = options["max-connections"].as<std::size_t>();
     backlog = options["listen-backlog"].as<std::size_t>();
 
-    dsTcpNodelay = options["tcp-nodelay"].as<bool>();
+    usTcpNodelay = options["tcp-nodelay"].as<bool>();
 
-    dsRecvTimeout = toTimeval(options["downstream-receive-timeout"].as<std::time_t>());
-    dsSendTimeout = toTimeval(options["downstream-send-timeout"].as<std::time_t>());
     usRecvTimeout = toTimeval(options["upstream-receive-timeout"].as<std::time_t>());
     usSendTimeout = toTimeval(options["upstream-send-timeout"].as<std::time_t>());
 
@@ -195,12 +192,8 @@ void Config::load(boost::filesystem::path file)
         _PECAR_OUT_CONFIG_PROPERTY(reuseAddress)
         _PECAR_OUT_CONFIG_PROPERTY(maxConnections)
         _PECAR_OUT_CONFIG_PROPERTY(backlog)
-        _PECAR_OUT_CONFIG_PROPERTY(dsTcpNodelay)
+        _PECAR_OUT_CONFIG_PROPERTY(usTcpNodelay)
         _PECAR_OUT_CONFIG_PROPERTY(ioServiceNum)
-        _PECAR_OUT_CONFIG_PROPERTY(dsRecvTimeout.tv_sec)
-        _PECAR_OUT_CONFIG_PROPERTY(dsSendTimeout.tv_sec)
-        _PECAR_OUT_CONFIG_PROPERTY(usRecvTimeout.tv_sec)
-        _PECAR_OUT_CONFIG_PROPERTY(usSendTimeout.tv_sec)
         _PECAR_OUT_CONFIG_PROPERTY(drBufferSize)
         _PECAR_OUT_CONFIG_PROPERTY(dwBufferSize)
         _PECAR_OUT_CONFIG_PROPERTY(urBufferSize)
@@ -212,6 +205,8 @@ void Config::load(boost::filesystem::path file)
         _PECAR_OUT_CONFIG_PROPERTY(userPassTotalLen)
         _PECAR_OUT_CONFIG_PROPERTY(multiThreads)
         _PECAR_OUT_CONFIG_PROPERTY(multiIoThreads)
+        _PECAR_OUT_CONFIG_PROPERTY(ifaceName)
+        _PECAR_OUT_CONFIG_PROPERTY(ifaceMtu)
     );
 }
 

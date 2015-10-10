@@ -8,14 +8,15 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/thread/mutex.hpp>
 
+
+extern int main(int, char*[]);
+
 namespace pecar
 {
 
-class Portal;
-
 class Config
 {
-    friend class Portal;
+    friend int ::main(int, char*[]);
 private:
     static Config _instance;
 
@@ -51,19 +52,19 @@ public:
     bool reuseAddress;
     std::size_t maxConnections;
     std::size_t backlog;
-    bool dsTcpNodelay;
+    bool usTcpNodelay;
 
     std::size_t ioServiceNum;
     boost::asio::ip::address host;
     uint16_t port;
 
-    std::string interfaceNameTpl;
+    std::string ifaceName;
+    uint16_t ifaceMtu;
 
     uint8_t passwordLen;
 
     typedef struct timeval Timeval;
-    Timeval dsRecvTimeout, dsSendTimeout,
-        usRecvTimeout, usSendTimeout;
+    Timeval usRecvTimeout, usSendTimeout;
 
     int uwPendingInterval, dwPendingInterval;
 
