@@ -21,7 +21,7 @@ namespace pecar
 {
 
 class Channel:
-    public boost::noncopyable,
+    private boost::noncopyable,
     public boost::enable_shared_from_this<Channel>
 {
 private:
@@ -42,7 +42,7 @@ private:
 public:
     Channel():
         config(Config::instance()),
-        ioService(config->ioServiceNum),
+        ioService(1),
         us(ioService),
         ds(ioService),
         dr(config->drBufferSize),
@@ -78,6 +78,8 @@ private:
     bool prepareDs();
 
     bool prepareUs();
+    bool connectUs();
+    bool authUs(const std::string& username, const std::string& password);
 
     void work();
 

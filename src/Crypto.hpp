@@ -6,6 +6,7 @@
 #include <boost/static_assert.hpp>
 #include <crypto++/modes.h>
 #include <crypto++/aes.h>
+#include <crypto++/osrng.h>
 
 namespace pecar {
 
@@ -80,6 +81,41 @@ public:
         const byte* _iv, std::size_t ivLen)
     {
         decor.SetKeyWithIV(_key, keyLen, _iv, ivLen);
+    }
+
+    std::size_t genKeyIv(char* _chunk)
+    {
+        char* chunk = _chunk;
+        CryptoPP::AutoSeededRandomPool rnd;
+
+        {
+            CryptoPP::SecByteBlock key(0x00, CryptoPP::AES::DEFAULT_KEYLENGTH);
+            rnd.GenerateBlock(key, key.size());
+
+            byte iv[CryptoPP::AES::BLOCKSIZE];
+            rnd.GenerateBlock(iv, sizeof(iv));
+            setEncKeyWithIv(key.data(), key.SizeInBytes(), iv, sizeof(iv));
+
+            std::memcpy(chunk, key.data(), key.SizeInBytes());
+            chunk += key.SizeInBytes();
+            std::memcpy(chunk, iv, sizeof(iv));
+            chunk += sizeof(iv);
+        }
+
+        {
+            CryptoPP::SecByteBlock key(0x00, CryptoPP::AES::DEFAULT_KEYLENGTH);
+            rnd.GenerateBlock(key, key.size());
+
+            byte iv[CryptoPP::AES::BLOCKSIZE];
+            rnd.GenerateBlock(iv, sizeof(iv));
+            setDecKeyWithIv(key.data(), key.SizeInBytes(), iv, sizeof(iv));
+
+            std::memcpy(chunk, key.data(), key.SizeInBytes());
+            chunk += key.SizeInBytes();
+            std::memcpy(chunk, iv, sizeof(iv));
+            chunk += sizeof(iv);
+        }
+        return chunk - _chunk;
     }
 };
 

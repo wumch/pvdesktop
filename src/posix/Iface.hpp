@@ -14,6 +14,7 @@ extern "C" {
 #include <arpa/inet.h>
 #include <netinet/in.h>
 }
+#include <cerrno>
 #include <cstring>
 #include <exception>
 #include <string>
@@ -21,17 +22,27 @@ extern "C" {
 #include "../Facade.hpp"
 
 
-#define __PECAR_IOCTL(fd, command, ...)  \
-    do {    \
-        int err = ioctl(fd, command, __VA_ARGS__);  \
-        if (CS_BUNLIKELY(err < 0))  \
-        {   \
-            throw IoctlError(err, std::string("ioctl(")     \
-                + boost::lexical_cast<std::string>(fd) \
-                + ", " \
-                + boost::lexical_cast<std::string>(command) \
-                + ") failed: " + boost::lexical_cast<std::string>(err));     \
-        } \
+#define __PECAR_IOCTL(fd, command, ...)                                     \
+    do {                                                                    \
+        if (CS_BUNLIKELY(ioctl(fd, command, __VA_ARGS__) < 0))              \
+        {                                                                   \
+            if (errno == EEXIST)                                            \
+            {                                                               \
+                CS_ERR("ioctl error: " << strerror(errno))                  \
+            }                                                               \
+            else                                                            \
+            {                                                               \
+                throw IoctlError(errno, std::string(__FILE__) + ":"         \
+                    + boost::lexical_cast<std::string>(__LINE__) + ":\t"    \
+                    + std::string("ioctl(")                                 \
+                    + boost::lexical_cast<std::string>(fd) + ", "           \
+                    + boost::lexical_cast<std::string>(command)             \
+                    + ") failed ("                                          \
+                    + boost::lexical_cast<std::string>(errno)               \
+                    + "): "                                                 \
+                    + strerror(errno));                                     \
+            }                                                               \
+        }                                                                   \
     } while (false)
 
 namespace pecar
@@ -59,33 +70,32 @@ public:
         return iface;
     }
 
-    static void addRoute(int iface, const RouteItem& route)
+    static void addRoute(int ifacea, const RouteItem& route)
     {
-        addRoute(iface, route, 0);
-    }
-
-    static void addRoute(int iface, const RouteItem& route, uint32_t gatewayIp)
-    {
+        CS_SAY("adding route");
+        int iface = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
         RouteEntry entry;
-        SockAddrIn gateway; // Gateway IP address
-
         std::memset(&entry, 0, sizeof(entry));
+        SockAddrIn* addr;
 
-        gateway.sin_family = AF_INET;
-        gateway.sin_addr.s_addr = gatewayIp;
-        gateway.sin_port = 0;
+        char ifname[] = "tun1";
+        entry.rt_dev = ifname;
 
-        reinterpret_cast<SockAddrIn*>(&entry.rt_dst)->sin_family = AF_INET;
-        reinterpret_cast<SockAddrIn*>(&entry.rt_dst)->sin_addr.s_addr = route.ip;
-        reinterpret_cast<SockAddrIn*>(&entry.rt_dst)->sin_port = 0;
+        addr = reinterpret_cast<SockAddrIn*>(&entry.rt_gateway);
+        addr->sin_family = AF_INET;
+        addr->sin_addr.s_addr = route.gateway;
 
-        reinterpret_cast<SockAddrIn*>(&entry.rt_genmask)->sin_family = AF_INET;
-        reinterpret_cast<SockAddrIn*>(&entry.rt_genmask)->sin_addr.s_addr = route.mask;
-        reinterpret_cast<SockAddrIn*>(&entry.rt_genmask)->sin_port = 0;
+        addr = reinterpret_cast<SockAddrIn*>(&entry.rt_dst);
+        addr->sin_family = AF_INET;
+        addr->sin_addr.s_addr = route.ip;
 
-        std::memcpy((void *) &entry.rt_gateway, &gateway, sizeof(gateway));
-        entry.rt_flags = RTF_UP | RTF_GATEWAY;
+        addr = reinterpret_cast<SockAddrIn*>(&entry.rt_genmask);
+        addr->sin_family = AF_INET;
+        addr->sin_addr.s_addr = route.mask;
+
+        entry.rt_flags = RTF_UP | RTF_HOST;
         __PECAR_IOCTL(iface, SIOCADDRT, &entry);
+        close(iface);
     }
 
     static void setMtu(int iface, uint16_t mtu)

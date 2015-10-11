@@ -43,20 +43,9 @@ public:
 
 public:
     std::string programName;
-    std::size_t workerCount;
-    std::size_t ioThreads;
     boost::filesystem::path pidFile;
-    std::size_t stackSize;
-    bool memlock;
 
-    bool reuseAddress;
-    std::size_t maxConnections;
-    std::size_t backlog;
     bool usTcpNodelay;
-
-    std::size_t ioServiceNum;
-    boost::asio::ip::address host;
-    uint16_t port;
 
     std::string ifaceName;
     uint16_t ifaceMtu;
@@ -64,7 +53,7 @@ public:
     uint8_t passwordLen;
 
     typedef struct timeval Timeval;
-    Timeval usRecvTimeout, usSendTimeout;
+    Timeval dsSendTimeout, usSendTimeout;
 
     int uwPendingInterval, dwPendingInterval;
 
@@ -72,12 +61,8 @@ public:
         urBufferSize, uwBufferSize;
     std::size_t userPassTotalLen;
 
-    bool dsLinger, usLinger;
-    int dsLingerTimeout, usLingerTimeout;
-
-    bool multiThreads, multiIoThreads;
-    mutable boost::mutex workMutex, ioMutex;
-
+    bool usLinger;
+    int usLingerTimeout;
 
     boost::program_options::variables_map options;
     boost::program_options::options_description desc;

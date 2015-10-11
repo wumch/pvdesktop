@@ -60,48 +60,29 @@ void Config::initDesc()
     boost::filesystem::path defaultPidFile("/var/run/" + programName + ".pid");
 
     desc.add_options()
-        ("host", boost::program_options::value<std::string>()->default_value("127.0.0.1"), "listen addr, default 127.0.0.1.")
-
-        ("port", boost::program_options::value<uint16_t>()->default_value(1080), "listen port, default 1080.")
-
-        ("reuse-address", boost::program_options::bool_switch()->default_value(true),
-            "whether reuse-address on startup or not, default on.")
-
-        ("tcp-nodelay", boost::program_options::bool_switch()->default_value(true),
-            "enables tcp-nodelay feature for downstream socket or not, default on.")
+        ("upstream-tcp-nodelay", boost::program_options::bool_switch()->default_value(true),
+            "enables tcp-nodelay feature for upstream socket or not, default on.")
 
         ("pid-file", boost::program_options::value<boost::filesystem::path>()->default_value(defaultPidFile),
             ("pid file, default " + defaultPidFile.string() + ".").c_str())
 
-        ("stack-size", boost::program_options::value<std::size_t>()->default_value(0),
-            "stack size limit (KB), 0 means not set, default 0.")
-
-        ("memlock", boost::program_options::bool_switch()->default_value(false),
-            "enable memlock or not, default off.")
-
-        ("worker-count", boost::program_options::value<std::size_t>()->default_value(1),
-            "num of worker threads, default 1.")
-
-        ("io-threads", boost::program_options::value<std::size_t>()->default_value(1),
-            "num of io threads, default 1.")
-
-        ("io-services", boost::program_options::value<std::size_t>()->default_value(1),
-            "num of io services, default 1.")
-
-        ("max-connections", boost::program_options::value<std::size_t>()->default_value(100000),
-            "max in and out coming connections, default 100000.")
-
-        ("listen-backlog", boost::program_options::value<std::size_t>()->default_value(1024),
-            "listen backlog, default 1024.")
-
-        ("upstream-receive-timeout", boost::program_options::value<std::time_t>()->default_value(30),
-            "timeout for receive from uptream (second), 0 means never timeout, default 30.")
+        ("downstream-send-timeout", boost::program_options::value<std::time_t>()->default_value(30),
+            "timeout for send to downstream (second), 0 means never timeout, default 30.")
 
         ("upstream-send-timeout", boost::program_options::value<std::time_t>()->default_value(30),
             "timeout for send to uptream (second), 0 means never timeout, default 30.")
 
-        ("initial-buffer-size", boost::program_options::value<std::size_t>()->default_value(32),
-            "initial buffer size (KB), at least 1, default 1.")
+        ("downstream-read-buffer-size", boost::program_options::value<std::size_t>()->default_value(64),
+            "read buffer size for downstream (KB), default 64.")
+
+        ("downstream-write-buffer-size", boost::program_options::value<std::size_t>()->default_value(64),
+            "write buffer size for downstream (KB), default 64.")
+
+        ("upstream-read-buffer-size", boost::program_options::value<std::size_t>()->default_value(64),
+            "read buffer size for upstream (KB), default 64.")
+
+        ("upstream-write-buffer-size", boost::program_options::value<std::size_t>()->default_value(64),
+            "write buffer size for upstream (KB), default 64.")
 
         ("downstream-linger", boost::program_options::bool_switch()->default_value(true),
             "socket linger on/off for downstream, default off.")
@@ -124,6 +105,12 @@ void Config::initDesc()
         ("username-password-total-max-len", boost::program_options::value<std::size_t>()->default_value(254),
             "max length of username and password, default 254.")
 
+        ("downstream-write-pending-interval", boost::program_options::value<int>()->default_value(10),
+            "downstream-write-pending-interval (ms), default 10.")
+
+        ("upstream-write-pending-interval", boost::program_options::value<int>()->default_value(10),
+            "upstream-write-pending-interval (ms), default 10.")
+
         ("iface-name", boost::program_options::value<std::string>()->default_value(std::string("tun0")),
             "iface name, default tun0.")
         ("iface-mtu", boost::program_options::value<uint16_t>()->default_value(1400),
@@ -143,23 +130,11 @@ void Config::load(boost::filesystem::path file)
     }
     boost::program_options::notify(options);
 
-    host = boost::asio::ip::address_v4::from_string(options["host"].as<std::string>());
-    port = options["port"].as<uint16_t>();
-
-    reuseAddress = options["reuse-address"].as<bool>();
-
     pidFile = options["pid-file"].as<boost::filesystem::path>();
-    stackSize = options["stack-size"].as<std::size_t>() << 10;
-    memlock = options["memlock"].as<bool>();
-    workerCount = options["worker-count"].as<std::size_t>();
-    ioThreads = options["io-threads"].as<std::size_t>();
-    ioServiceNum = options["io-services"].as<std::size_t>();
-    maxConnections = options["max-connections"].as<std::size_t>();
-    backlog = options["listen-backlog"].as<std::size_t>();
 
-    usTcpNodelay = options["tcp-nodelay"].as<bool>();
+    usTcpNodelay = options["upstream-tcp-nodelay"].as<bool>();
 
-    usRecvTimeout = toTimeval(options["upstream-receive-timeout"].as<std::time_t>());
+    dsSendTimeout = toTimeval(options["downstream-send-timeout"].as<std::time_t>());
     usSendTimeout = toTimeval(options["upstream-send-timeout"].as<std::time_t>());
 
     drBufferSize = options["downstream-read-buffer-size"].as<std::size_t>() << 10;
@@ -167,8 +142,6 @@ void Config::load(boost::filesystem::path file)
     urBufferSize = options["upstream-read-buffer-size"].as<std::size_t>() << 10;
     uwBufferSize = options["upstream-write-buffer-size"].as<std::size_t>() << 10;
 
-    dsLinger = options["downstream-linger"].as<bool>();
-    dsLingerTimeout = options["downstream-linger-timeout"].as<int>();
     usLinger = options["upstream-linger"].as<bool>();
     usLingerTimeout = options["upstream-linger-timeout"].as<int>();
 
@@ -177,34 +150,22 @@ void Config::load(boost::filesystem::path file)
 
     userPassTotalLen = options["username-password-total-max-len"].as<std::size_t>();
 
-    multiThreads = workerCount > 1;
-    multiIoThreads = ioThreads > 1;
+    ifaceName = options["iface-name"].as<std::string>();
+    ifaceMtu = options["iface-mtu"].as<uint16_t>();
 
     CS_SAY(
         "loaded configs in [" << file.string() << "]:" << std::endl
         _PECAR_OUT_CONFIG_PROPERTY(programName)
-        _PECAR_OUT_CONFIG_PROPERTY(host)
-        _PECAR_OUT_CONFIG_PROPERTY(port)
-        _PECAR_OUT_CONFIG_PROPERTY(workerCount)
-        _PECAR_OUT_CONFIG_PROPERTY(ioThreads)
-        _PECAR_OUT_CONFIG_PROPERTY(stackSize)
-        _PECAR_OUT_CONFIG_PROPERTY(memlock)
-        _PECAR_OUT_CONFIG_PROPERTY(reuseAddress)
-        _PECAR_OUT_CONFIG_PROPERTY(maxConnections)
-        _PECAR_OUT_CONFIG_PROPERTY(backlog)
         _PECAR_OUT_CONFIG_PROPERTY(usTcpNodelay)
-        _PECAR_OUT_CONFIG_PROPERTY(ioServiceNum)
         _PECAR_OUT_CONFIG_PROPERTY(drBufferSize)
         _PECAR_OUT_CONFIG_PROPERTY(dwBufferSize)
         _PECAR_OUT_CONFIG_PROPERTY(urBufferSize)
         _PECAR_OUT_CONFIG_PROPERTY(uwBufferSize)
-        _PECAR_OUT_CONFIG_PROPERTY(dsLinger)
-        _PECAR_OUT_CONFIG_PROPERTY(dsLingerTimeout)
+        _PECAR_OUT_CONFIG_PROPERTY(dwPendingInterval)
+        _PECAR_OUT_CONFIG_PROPERTY(uwPendingInterval)
         _PECAR_OUT_CONFIG_PROPERTY(usLinger)
         _PECAR_OUT_CONFIG_PROPERTY(usLingerTimeout)
         _PECAR_OUT_CONFIG_PROPERTY(userPassTotalLen)
-        _PECAR_OUT_CONFIG_PROPERTY(multiThreads)
-        _PECAR_OUT_CONFIG_PROPERTY(multiIoThreads)
         _PECAR_OUT_CONFIG_PROPERTY(ifaceName)
         _PECAR_OUT_CONFIG_PROPERTY(ifaceMtu)
     );

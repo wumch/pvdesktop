@@ -17,6 +17,12 @@ enum Status {
     IO_RUNOUT         = 201,
 };
 
+enum AuthRes {
+    AUTH_CODE_OK,            // 成功
+    AUTH_CODE_EXPIRED,       // 会员过期
+    AUTH_CODE_TRAFFIC_EXHAUST, // 阶段流量耗尽
+};
+
 class IoctlError:
     public std::exception
 {
@@ -43,10 +49,10 @@ public:
 struct RouteItem
 {
 public:
-    uint32_t ip, mask;
+    uint32_t ip, mask, gateway;
 
-    RouteItem(uint32_t _ip, uint32_t _mask):
-        ip(_ip), mask(_mask)
+    RouteItem(uint32_t _ip, uint32_t _mask, uint32_t _gateway):
+        ip(_ip), mask(_mask), gateway(_gateway)
     {}
 };
 typedef std::vector<RouteItem> RouteList;
@@ -72,11 +78,8 @@ public:
     static Server getServer(const ServerList& excludes);
 
     static void setStatus(Status status);
+
+    static void setAuthRes(AuthRes res);
 };
 
-}
-
-std::ostream& operator<<(std::ostream& out, const pecar::Server& server)
-{
-    return out << server.host << ':' << server.port;
 }
