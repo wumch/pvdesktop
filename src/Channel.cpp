@@ -192,8 +192,8 @@ void Channel::handleDsRead(int bytesRead)
         return uwPendingTimer.async_wait(boost::bind(&Channel::handleDsRead, shared_from_this(), bytesRead));
     }
     CS_DUMP(bytesRead);
-    ++uwPending;
     crypto.encrypt(dr.data, bytesRead, uw.data);
+    ++uwPending;
     asio::async_write(us, __PECAR_BUFFER(uw), asio::transfer_exactly(bytesRead),
         boost::bind(&Channel::handleUsWritten, shared_from_this(),
             asio::placeholders::error, asio::placeholders::bytes_transferred));
@@ -234,7 +234,7 @@ void Channel::handleUsRead(int bytesRead, int bytesLeft)
         {
             ++dwPending;
             asio::async_write(ds, __PECAR_BUFFER(dw), asio::transfer_exactly(firstPackLen),
-                boost::bind(&Channel::handleUsWritten, shared_from_this(),
+                boost::bind(&Channel::handleDsWritten, shared_from_this(),
                     asio::placeholders::error, asio::placeholders::bytes_transferred));
             us.async_read_some(__PECAR_BUFFER(ur), boost::bind(&Channel::handleUsRead, shared_from_this(),
                 asio::placeholders::error, asio::placeholders::bytes_transferred, 0));
@@ -322,7 +322,7 @@ int Channel::dsWritePack(const char* begin, int bytesRemain)
     {
         ++uwPending;
         asio::async_write(ds, asio::buffer(begin, packLen), asio::transfer_exactly(packLen),
-            boost::bind(&Channel::handleUsWritten, shared_from_this(),
+            boost::bind(&Channel::handleDsWritten, shared_from_this(),
                 asio::placeholders::error, asio::placeholders::bytes_transferred));
         return packLen;
     }
