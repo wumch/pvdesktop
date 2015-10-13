@@ -13,15 +13,15 @@ fi
 
 TUNNAME="tun1"
 
-OUTIF=`/sbin/ip route show to exact 0/0 | sed -r 's/.*dev\s+(\S+).*/\1/'`
-iptables -t nat -A POSTROUTING -s 10.0.0.0/8 -o ${OUTIF} -j MASQUERADE
-iptables --table nat --append POSTROUTING --out-interface $OUTIF --jump MASQUERADE
+#OUTIF=`/sbin/ip route show to exact 0/0 | sed -r 's/.*dev\s+(\S+).*/\1/'`
+#iptables -t nat -A POSTROUTING -s 10.0.0.0/8 -o ${OUTIF} -j MASQUERADE
+#iptables --table nat --append POSTROUTING --out-interface $OUTIF --jump MASQUERADE
 
 # = tunctl -n -t tun1
 ip tuntap add dev ${TUNNAME} mode tun use wumch group wumch
 
 ifconfig ${TUNNAME} 10.0.0.3 dstaddr 10.0.0.4 mtu 1400 up
 
-# sudo route add 222.161.220.33/32 dev ${TUNNAME}
-# sudo route add 112.90.51.173/32 dev ${TUNNAME}
+sudo route add 222.161.220.33/32 dev ${TUNNAME}
+sudo route add 112.90.51.173/32 dev ${TUNNAME}
 
