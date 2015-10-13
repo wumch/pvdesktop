@@ -320,7 +320,7 @@ int Channel::dsWritePack(const char* begin, int bytesRemain)
     }
     else
     {
-        ++uwPending;
+        ++dwPending;
         asio::async_write(ds, asio::buffer(begin, packLen), asio::transfer_exactly(packLen),
             boost::bind(&Channel::handleDsWritten, shared_from_this(),
                 asio::placeholders::error, asio::placeholders::bytes_transferred));
