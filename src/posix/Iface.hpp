@@ -73,6 +73,7 @@ public:
     static void addRoute(int ifacea, const RouteItem& route)
     {
         CS_SAY("adding route");
+        return;
         int iface = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
         RouteEntry entry;
         std::memset(&entry, 0, sizeof(entry));
