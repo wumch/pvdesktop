@@ -242,7 +242,7 @@ void Channel::handleUsRead(int bytesRead, int bytesLeft)
         else if (firstPackLen < totalBytes)
         {
             int bytesRemain = totalBytes;
-            const char* packBegin = uw.data;
+            const char* packBegin = dw.data;
             int bytesWritten;
             while (bytesRemain >= ip_pack_min_len && (bytesWritten = dsWritePack(packBegin, bytesRemain)) > 0)
             {
