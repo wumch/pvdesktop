@@ -1,10 +1,5 @@
 
 #include "Channel.hpp"
-extern "C" {    // for inet_aton
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-}
 #include <iostream>
 #include <cstring>
 #include <boost/bind.hpp>
@@ -129,9 +124,19 @@ bool Channel::connectUs()
     Server server = Facade::getServer();
 
     Facade::setStatus(US_CONNECTING);
-    struct in_addr addr;
+    uint32_t ipUint;
     bool connected = false;
-    if (inet_aton(server.host.c_str(), &addr))
+    if (Iface::ip2uint(server.host.c_str(), ipUint))
+    {
+        tcp::endpoint endpoint(asio::ip::address_v4(ipUint), server.port);
+        boost::system::error_code err;
+        us.connect(endpoint, err);
+        if (!err)
+        {
+            connected = true;
+        }
+    }
+    else
     {
         tcp::resolver resolver(ioService);
         tcp::resolver::query query(server.host, boost::lexical_cast<std::string>(server.port));
@@ -144,16 +149,6 @@ bool Channel::connectUs()
                 connected = true;
                 break;
             }
-        }
-    }
-    else
-    {
-        tcp::endpoint endpoint(asio::ip::address_v4(addr.s_addr), server.port);
-        boost::system::error_code err;
-        us.connect(endpoint, err);
-        if (!err)
-        {
-            connected = true;
         }
     }
     if (!connected)

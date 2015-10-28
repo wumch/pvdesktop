@@ -3,17 +3,7 @@
 
 #include "../predef.hpp"
 extern "C" {
-#include <unistd.h>
-#include <sys/ioctl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#include <linux/if_tun.h>
-#include <net/if.h>
-#include <net/route.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
+#include "tap-windows.h"
 }
 #include <cerrno>
 #include <cstring>

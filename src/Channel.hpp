@@ -9,9 +9,9 @@
 #include <boost/asio.hpp>
 #include <boost/thread/mutex.hpp>
 #include "Config.hpp"
-#include "Iface.hpp"
 #include "Crypto.hpp"
 #include "Buffer.hpp"
+#include "Iface.hpp"
 
 
 namespace asio = boost::asio;
